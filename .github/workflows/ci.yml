@@ -67,7 +67,7 @@ jobs:
             > test_report.json
 
       - name: Upload test report
-        uses: actions/upload-artifact@v4s
+        uses: actions/upload-artifact@v4
         with:
           name: test-report
           path: test_report.json
