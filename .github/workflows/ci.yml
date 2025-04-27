@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - 'feature/*'
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-interaction
+
+      - name: Run pytest with coverage
+        run: |
+          poetry run coverage run -m pytest \
+            --disable-warnings -q \
+            --json-report \
+            --json-report-file=pytest.json
+
+          poetry run coverage json -o coverage.json
+
+      - name: Summarize pytest results
+        run: |
+          poetry run jq '{
+            summary: .summary,
+            duration: .duration,
+            tests: [.tests[] | {name: .nodeid, outcome: .outcome, duration: .duration, message: .call?.crash?.message}]
+          }' pytest.json > pytest.json
+
+      - name: Run flake8
+        run: |
+          poetry run flake8 . --format=json --output-file=flake8.json
+          poetry run jq '[ .[] | {file:.filename, line:.line_number, code:.code} ]' flake8.json > flake8.json
+
+      - name: Run bandit
+        run: |
+          poetry run bandit -r . -f json -o bandit.json --exclude tests
+          poetry run jq '{high: [.results[] | select(.issue_severity=="HIGH")]}' bandit.json > bandit.json
+
+      - name: Summarize coverage results
+        run: |
+          poetry run jq '{percent_covered: .totals.percent_covered}' coverage.json > coverage.json
+
+      - name: Combine all summaries into one
+        run: |
+          poetry run jq -s 'reduce .[] as $item ({}; . * $item)' \
+            pytest.json \
+            flake8.json \
+            bandit.json \
+            coverage.json \
+            > test_report.json
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-report
+          path: test_report.json
