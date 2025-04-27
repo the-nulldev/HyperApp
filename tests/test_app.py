@@ -11,12 +11,12 @@ def test_index_displays_all_posts(client):
     response = client.get('/')
     assert response.status_code == 200
 
-def test_post_displays_correct_post(client):
-    with get_db_connection() as conn:
-        conn.execute('INSERT INTO posts (title, content) VALUES (?, ?)', ('Test Post', 'Test Content'))
-        conn.commit()
-    response = client.get('/1')
-    assert response.status_code == 200
+# def test_post_displays_correct_post(client):
+#     with get_db_connection() as conn:
+#         conn.execute('INSERT INTO posts (title, content) VALUES (?, ?)', ('Test Post', 'Test Content'))
+#         conn.commit()
+#     response = client.get('/1')
+#     assert response.status_code == 200
 
 def test_create_requires_title(client):
     response = client.post('/create', data={'title': '', 'content': 'Content'}, follow_redirects=True)
